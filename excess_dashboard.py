@@ -1,15 +1,16 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from io import BytesIO
 from datetime import datetime
-from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 import random
 
 # -----------------------------
 # Page Setup
 # -----------------------------
 st.set_page_config(page_title="Excess Cash Monitoring", layout="wide")
+
 PASSWORD = "jabalpur123"
 
 # -----------------------------
@@ -23,17 +24,17 @@ if not st.session_state.authenticated:
     if st.button("Login"):
         if password_input == PASSWORD:
             st.session_state.authenticated = True
-            st.success("Access Granted! Refresh page if tabs do not appear.")
+            st.success("Access Granted! Reload the page to continue.")
 else:
     st.title("Excess Cash Monitoring – Jabalpur Region")
-    
+
     # -----------------------------
     # Tabs
     # -----------------------------
     tab1, tab2 = st.tabs(["Very High Risk Offices", "Remittance Monitoring"])
 
     # ================================
-    # TAB 1: Very High Risk Offices (Auto Upload)
+    # TAB 1: Very High Risk Offices
     # ================================
     with tab1:
         uploaded_file = st.file_uploader(
@@ -100,11 +101,12 @@ else:
                     with st.expander(f"{heading} ({len(high_risk)})"):
                         st.dataframe(high_risk if not high_risk.empty else pd.DataFrame({"Info":["No offices found"]}))
 
-                # Export single sheet with From/To/Last Updated
+                # Export single sheet
                 if risk_tables:
                     combined_df = pd.concat(risk_tables.values(), ignore_index=True)
                     combined_df['Remark'] = "Pending"
 
+                    # Append From/To dates at bottom
                     from_to_df = pd.DataFrame({
                         'Office Name':[f"From Date: {from_date.strftime('%d-%m-%Y')}"],
                         'Division':[f"To Date: {to_date.strftime('%d-%m-%Y')}"],
@@ -113,16 +115,17 @@ else:
                         'Office Type':[None],
                         'Remark':[None]
                     })
+                    last_updated_str = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
                     last_updated_df = pd.DataFrame({
-                        'Office Name':[f"Last Updated: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"],
+                        'Office Name':[f"Last Updated: {last_updated_str}"],
                         'Division':[None],
                         'Days_Exceeding_Threshold':[None],
                         'Avg_Excess_Above_Threshold':[None],
                         'Office Type':[None],
                         'Remark':[None]
                     })
-
                     combined_export = pd.concat([combined_df, from_to_df, last_updated_df], ignore_index=True)
+
                     output = BytesIO()
                     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                         combined_export.to_excel(writer, sheet_name="High_Risk_Offices", index=False)
@@ -167,54 +170,25 @@ else:
             if 'Remark' not in remit_df.columns:
                 remit_df['Remark'] = "Pending"
 
-            branch_df = remit_df[remit_df['Office Type']=='BPO'].copy()
-            sub_df = remit_df[remit_df['Office Type']=='SPO'].copy()
             remark_options = ["Pending","Cash Remitted","Balance lowered but cash not remitted"]
 
-            # JS for full-row coloring
-            js_row_style = JsCode("""
-            function(params) {
-                if (params.data.Remark == 'Pending') {
-                    return {'color':'white','backgroundColor':'#800000','fontWeight':'bold'};
-                } else if (params.data.Remark == 'Cash Remitted') {
-                    return {'color':'white','backgroundColor':'#008000','fontWeight':'bold'};
-                } else if (params.data.Remark == 'Balance lowered but cash not remitted') {
-                    return {'color':'black','backgroundColor':'#FFD700','fontWeight':'bold'};
-                }
-            };
-            """)
-
-            def display_aggrid(df_display, title, prev_df):
-                st.markdown(f"### {title}")
-                if df_display.empty:
-                    st.write("No offices found.")
-                    return df_display, False
-                gb = GridOptionsBuilder.from_dataframe(df_display)
-                gb.configure_column(
-                    "Remark",
-                    editable=True,
-                    cellEditor="agSelectCellEditor",
-                    cellEditorParams={"values": remark_options}
-                )
-                gb.configure_grid_options(singleClickEdit=True, getRowStyle=js_row_style)
-                gridOptions = gb.build()
-                grid_response = AgGrid(
-                    df_display,
-                    gridOptions=gridOptions,
-                    update_mode="MODEL_CHANGED",
-                    fit_columns_on_grid_load=True,
-                    allow_unsafe_jscode=True
-                )
-                new_df = pd.DataFrame(grid_response['data'])
-                sound_trigger = not new_df['Remark'].equals(prev_df['Remark'])
-                return new_df, sound_trigger
-
-            updated_branch, sound1 = display_aggrid(branch_df, "Branch Offices", branch_df)
-            updated_sub, sound2 = display_aggrid(sub_df, "Sub Offices", sub_df)
-            combined_updated = pd.concat([updated_branch, updated_sub], ignore_index=True)
+            # Editable remarks with sound and full-row coloring
+            st.markdown("### Update Remarks")
+            changed = False
+            for idx, row in remit_df.iterrows():
+                cols = st.columns([2,2,1,1,1,2])
+                cols[0].write(row['Office Name'])
+                cols[1].write(row['Division'])
+                cols[2].write(row['Days_Exceeding_Threshold'])
+                cols[3].write(row['Avg_Excess_Above_Threshold'])
+                cols[4].write(row['Office Type'])
+                selected = cols[5].selectbox("Remark", remark_options, index=remark_options.index(row['Remark']), key=f"remark_{idx}")
+                if selected != row['Remark']:
+                    remit_df.at[idx,'Remark'] = selected
+                    changed = True
 
             # Play beep if any remark changed
-            if sound1 or sound2:
+            if changed:
                 rand_suffix = random.randint(1,100000)
                 st.components.v1.html(f"""
                 <audio autoplay>
@@ -222,7 +196,7 @@ else:
                 </audio>
                 """, height=0)
 
-            # Append From/To and Last Updated
+            # Append From/To and LastUpdated
             from_date = datetime.today()
             to_date = datetime.today()
             from_to_df = pd.DataFrame({
@@ -241,8 +215,9 @@ else:
                 'Office Type':[None],
                 'Remark':[None]
             })
+            combined_updated_export = pd.concat([remit_df, from_to_df, last_updated_df], ignore_index=True)
 
-            combined_updated_export = pd.concat([combined_updated, from_to_df, last_updated_df], ignore_index=True)
+            # Download button
             output2 = BytesIO()
             with pd.ExcelWriter(output2, engine='xlsxwriter') as writer:
                 combined_updated_export.to_excel(writer, sheet_name="High_Risk_Updated", index=False)
