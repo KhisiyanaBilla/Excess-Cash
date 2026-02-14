@@ -10,7 +10,6 @@ import random
 # Page Setup
 # -----------------------------
 st.set_page_config(page_title="Excess Cash Monitoring", layout="wide")
-
 PASSWORD = "jabalpur123"
 
 # -----------------------------
@@ -24,7 +23,7 @@ if not st.session_state.authenticated:
     if st.button("Login"):
         if password_input == PASSWORD:
             st.session_state.authenticated = True
-            st.success("Access Granted! Press Login button again to enter.")
+            st.success("Access Granted! Refresh page if tabs do not appear.")
 else:
     st.title("Excess Cash Monitoring – Jabalpur Region")
     
@@ -34,7 +33,7 @@ else:
     tab1, tab2 = st.tabs(["Very High Risk Offices", "Remittance Monitoring"])
 
     # ================================
-    # TAB 1: Very High Risk Offices
+    # TAB 1: Very High Risk Offices (Auto Upload)
     # ================================
     with tab1:
         uploaded_file = st.file_uploader(
@@ -101,12 +100,11 @@ else:
                     with st.expander(f"{heading} ({len(high_risk)})"):
                         st.dataframe(high_risk if not high_risk.empty else pd.DataFrame({"Info":["No offices found"]}))
 
-                # Export single sheet
+                # Export single sheet with From/To/Last Updated
                 if risk_tables:
                     combined_df = pd.concat(risk_tables.values(), ignore_index=True)
                     combined_df['Remark'] = "Pending"
 
-                    # From/To dates at bottom
                     from_to_df = pd.DataFrame({
                         'Office Name':[f"From Date: {from_date.strftime('%d-%m-%Y')}"],
                         'Division':[f"To Date: {to_date.strftime('%d-%m-%Y')}"],
@@ -115,12 +113,8 @@ else:
                         'Office Type':[None],
                         'Remark':[None]
                     })
-
-                    # Last updated
-                    now = datetime.now()
-                    last_updated_str = now.strftime("%d-%m-%Y %H:%M:%S")
                     last_updated_df = pd.DataFrame({
-                        'Office Name':[f"Last Updated: {last_updated_str}"],
+                        'Office Name':[f"Last Updated: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"],
                         'Division':[None],
                         'Days_Exceeding_Threshold':[None],
                         'Avg_Excess_Above_Threshold':[None],
@@ -177,15 +171,15 @@ else:
             sub_df = remit_df[remit_df['Office Type']=='SPO'].copy()
             remark_options = ["Pending","Cash Remitted","Balance lowered but cash not remitted"]
 
-            # JS for row coloring
+            # JS for full-row coloring
             js_row_style = JsCode("""
             function(params) {
                 if (params.data.Remark == 'Pending') {
-                    return {'color':'white','backgroundColor':'#800000'};
+                    return {'color':'white','backgroundColor':'#800000','fontWeight':'bold'};
                 } else if (params.data.Remark == 'Cash Remitted') {
-                    return {'color':'white','backgroundColor':'#008000'};
+                    return {'color':'white','backgroundColor':'#008000','fontWeight':'bold'};
                 } else if (params.data.Remark == 'Balance lowered but cash not remitted') {
-                    return {'color':'black','backgroundColor':'#FFD700'};
+                    return {'color':'black','backgroundColor':'#FFD700','fontWeight':'bold'};
                 }
             };
             """)
@@ -228,7 +222,7 @@ else:
                 </audio>
                 """, height=0)
 
-            # Append From/To and LastUpdated
+            # Append From/To and Last Updated
             from_date = datetime.today()
             to_date = datetime.today()
             from_to_df = pd.DataFrame({
@@ -239,10 +233,8 @@ else:
                 'Office Type':[None],
                 'Remark':[None]
             })
-            now = datetime.now()
-            last_updated_str = now.strftime("%d-%m-%Y %H:%M:%S")
             last_updated_df = pd.DataFrame({
-                'Office Name':[f"Last Updated: {last_updated_str}"],
+                'Office Name':[f"Last Updated: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"],
                 'Division':[None],
                 'Days_Exceeding_Threshold':[None],
                 'Avg_Excess_Above_Threshold':[None],
