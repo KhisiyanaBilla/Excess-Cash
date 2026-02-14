@@ -23,10 +23,10 @@ if not st.session_state.authenticated:
     if st.button("Login"):
         if password_input == PASSWORD:
             st.session_state.authenticated = True
-            st.success("Access Granted! Reload page if tabs not visible.")
+            st.success("Access Granted! Press Login button again to enter.")
 else:
     st.title("Excess Cash Monitoring – Jabalpur Region")
-    
+
     # -----------------------------
     # Tabs
     # -----------------------------
@@ -100,12 +100,12 @@ else:
                     with st.expander(f"{heading} ({len(high_risk)})"):
                         st.dataframe(high_risk if not high_risk.empty else pd.DataFrame({"Info":["No offices found"]}))
 
-                # Export combined Excel
+                # Export single sheet
                 if risk_tables:
                     combined_df = pd.concat(risk_tables.values(), ignore_index=True)
                     combined_df['Remark'] = "Pending"
 
-                    # From/To dates and last updated
+                    # From/To dates at bottom
                     from_to_df = pd.DataFrame({
                         'Office Name':[f"From Date: {from_date.strftime('%d-%m-%Y')}"],
                         'Division':[f"To Date: {to_date.strftime('%d-%m-%Y')}"],
@@ -114,6 +114,8 @@ else:
                         'Office Type':[None],
                         'Remark':[None]
                     })
+
+                    # Last updated
                     now = datetime.now()
                     last_updated_str = now.strftime("%d-%m-%Y %H:%M:%S")
                     last_updated_df = pd.DataFrame({
@@ -124,10 +126,12 @@ else:
                         'Office Type':[None],
                         'Remark':[None]
                     })
+
                     combined_export = pd.concat([combined_df, from_to_df, last_updated_df], ignore_index=True)
                     output = BytesIO()
                     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                         combined_export.to_excel(writer, sheet_name="High_Risk_Offices", index=False)
+
                     file_name_tab1 = f"High_Risk_Offices_{from_date.strftime('%d%m%Y')}_to_{to_date.strftime('%d%m%Y')}.xlsx"
                     st.download_button(
                         "📥 Download Very High Risk Offices as Excel",
@@ -168,44 +172,39 @@ else:
             if 'Remark' not in remit_df.columns:
                 remit_df['Remark'] = "Pending"
 
-            # Editable DataFrame using st.data_editor (supports Streamlit Cloud)
-            df_edit = st.data_editor(
+            remark_options = ["Pending","Cash Remitted","Balance lowered but cash not remitted"]
+
+            # Function to color rows
+            def color_rows(row):
+                if row["Remark"] == "Pending":
+                    return ["background-color: #800000; color: white"]*len(row)
+                elif row["Remark"] == "Cash Remitted":
+                    return ["background-color: #008000; color: white"]*len(row)
+                elif row["Remark"] == "Balance lowered but cash not remitted":
+                    return ["background-color: #FFD700; color: black"]*len(row)
+                else:
+                    return [""]*len(row)
+
+            # Editable table using st.data_editor
+            edited_df = st.data_editor(
                 remit_df,
+                column_config=None,
+                disabled=False,
+                hide_index=True,
                 use_container_width=True,
-                num_rows="dynamic",
-                column_config={"Remark": st.column_config.Selectbox(
-                    options=["Pending","Cash Remitted","Balance lowered but cash not remitted"],
-                    label="Remark"
-                )}
+                row_config={"style": color_rows}
             )
 
-            # Detect changes to trigger sound
-            if 'prev_df' not in st.session_state:
-                st.session_state.prev_df = df_edit.copy()
-            if not df_edit['Remark'].equals(st.session_state.prev_df['Remark']):
+            # Play sound if any remark changed
+            if not edited_df['Remark'].equals(remit_df['Remark']):
                 rand_suffix = random.randint(1,100000)
                 st.components.v1.html(f"""
                 <audio autoplay>
                     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg?{rand_suffix}" type="audio/ogg">
                 </audio>
                 """, height=0)
-                st.session_state.prev_df = df_edit.copy()
 
-            # Color rows based on remark
-            def highlight_rows(row):
-                if row['Remark'] == "Pending":
-                    return ['background-color: #800000; color: white']*len(row)
-                elif row['Remark'] == "Cash Remitted":
-                    return ['background-color: #008000; color: white']*len(row)
-                elif row['Remark'] == "Balance lowered but cash not remitted":
-                    return ['background-color: #FFD700; color: black']*len(row)
-                else:
-                    return ['']*len(row)
-
-            st.markdown("### Preview with colors")
-            st.dataframe(df_edit.style.apply(highlight_rows, axis=1))
-
-            # Export with from/to and last updated
+            # Append From/To and LastUpdated
             from_date = datetime.today()
             to_date = datetime.today()
             from_to_df = pd.DataFrame({
@@ -216,18 +215,22 @@ else:
                 'Office Type':[None],
                 'Remark':[None]
             })
+            now = datetime.now()
+            last_updated_str = now.strftime("%d-%m-%Y %H:%M:%S")
             last_updated_df = pd.DataFrame({
-                'Office Name':[f"Last Updated: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"],
+                'Office Name':[f"Last Updated: {last_updated_str}"],
                 'Division':[None],
                 'Days_Exceeding_Threshold':[None],
                 'Avg_Excess_Above_Threshold':[None],
                 'Office Type':[None],
                 'Remark':[None]
             })
-            combined_export2 = pd.concat([df_edit, from_to_df, last_updated_df], ignore_index=True)
+
+            combined_export = pd.concat([edited_df, from_to_df, last_updated_df], ignore_index=True)
             output2 = BytesIO()
             with pd.ExcelWriter(output2, engine='xlsxwriter') as writer:
-                combined_export2.to_excel(writer, sheet_name="High_Risk_Updated", index=False)
+                combined_export.to_excel(writer, sheet_name="High_Risk_Updated", index=False)
+
             file_name_tab2 = f"High_Risk_Updated_{from_date.strftime('%d%m%Y')}_to_{to_date.strftime('%d%m%Y')}.xlsx"
             st.download_button(
                 "📥 Download Updated High Risk Offices with Remarks",
