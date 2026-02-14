@@ -1,5 +1,6 @@
 streamlit
-pandas>=2.0.0,<3.0
-plotly>=6.0.0,<7.0
-st-aggrid>=0.4.14,<0.5
-xlsxwriter>=3.1.2
+pandas
+plotly
+st-aggrid
+xlsxwriter
+
