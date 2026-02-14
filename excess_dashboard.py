@@ -24,7 +24,7 @@ if not st.session_state.authenticated:
     if st.button("Login"):
         if password_input == PASSWORD:
             st.session_state.authenticated = True
-            st.success("Access Granted! Reload the page to continue.")
+            st.success("Access Granted! Click the login button again to continue.")
 else:
     st.title("Excess Cash Monitoring – Jabalpur Region")
 
@@ -228,3 +228,4 @@ else:
                 file_name=file_name_tab2,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
