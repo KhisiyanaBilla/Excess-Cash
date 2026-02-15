@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.express as px
 from io import BytesIO
 from datetime import datetime, timedelta
-import re
 
 # -----------------------------
 # Page Setup
@@ -155,7 +154,9 @@ else:
                     combined_df = pd.concat(risk_tables.values(), ignore_index=True)
                     combined_df['Remark'] = "Pending"
 
-                    # From-To rows
+                    # -----------------------------
+                    # From-To rows (separate rows)
+                    # -----------------------------
                     from_to_df = pd.DataFrame({
                         'Office Name': [
                             f"From Date: {from_date.strftime('%d-%m-%Y')}",
@@ -168,7 +169,9 @@ else:
                         'Remark': [None, None]
                     })
 
+                    # -----------------------------
                     # Last Updated IST
+                    # -----------------------------
                     ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
                     last_updated_df = pd.DataFrame({
                         'Office Name': [f"Last Updated (IST): {ist_time.strftime('%d-%m-%Y %H:%M:%S')}"],
@@ -380,7 +383,6 @@ else:
             from_date = None
             to_date = None
             for val in uploaded_remit:
-                # Already read into df, check Office Name column
                 for name in df['Office Name'].astype(str):
                     if name.startswith("From Date:"):
                         from_date = datetime.strptime(name.replace("From Date:", "").strip(), "%d-%m-%Y")
