@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from io import BytesIO
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # -----------------------------
 # Page Setup
@@ -155,17 +155,27 @@ else:
                     combined_df = pd.concat(risk_tables.values(), ignore_index=True)
                     combined_df['Remark'] = "Pending"
 
+                    # -----------------------------
+                    # From-To Rows (Separate)
+                    # -----------------------------
                     from_to_df = pd.DataFrame({
-                        'Office Name': [f"From Date: {from_date.strftime('%d-%m-%Y')}"],
-                        'Division': [f"To Date: {to_date.strftime('%d-%m-%Y')}"],
-                        'Days_Exceeding_Threshold': [None],
-                        'Avg_Excess_Above_Threshold': [None],
-                        'Office Type': [None],
-                        'Remark': [None]
+                        'Office Name': [
+                            f"From Date: {from_date.strftime('%d-%m-%Y')}",
+                            f"To Date: {to_date.strftime('%d-%m-%Y')}"
+                        ],
+                        'Division': [None, None],
+                        'Days_Exceeding_Threshold': [None, None],
+                        'Avg_Excess_Above_Threshold': [None, None],
+                        'Office Type': [None, None],
+                        'Remark': [None, None]
                     })
 
+                    # -----------------------------
+                    # Last Updated IST
+                    # -----------------------------
+                    ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
                     last_updated_df = pd.DataFrame({
-                        'Office Name': [f"Last Updated: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"],
+                        'Office Name': [f"Last Updated (IST): {ist_time.strftime('%d-%m-%Y %H:%M:%S')}"],
                         'Division': [None],
                         'Days_Exceeding_Threshold': [None],
                         'Avg_Excess_Above_Threshold': [None],
@@ -239,16 +249,6 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # (REST OF TAB 2 CODE REMAINS 100% UNCHANGED)
-        # — exactly as you already have it —
-
-
-# ================================
-# TAB 2: Remittance Monitoring
-# ================================
-# TAB 2: Remittance Monitoring
-# ================================
-    with tab2:
         st.subheader("Remittance Monitoring for High Risk Offices")
 
         if "play_sound" not in st.session_state:
@@ -264,7 +264,7 @@ else:
             df = pd.read_excel(uploaded_remit)
 
             # Remove footer rows
-            df = df[~df['Office Name'].astype(str).str.startswith(("From Date", "Last Updated"))]
+            df = df[~df['Office Name'].astype(str).str.startswith(("From Date", "To Date", "Last Updated"))]
             df = df.reset_index(drop=True)
 
             df['Days_Exceeding_Threshold'] = df['Days_Exceeding_Threshold'].fillna(0).astype(int)
@@ -366,7 +366,6 @@ else:
                         st.session_state.play_sound = True
                         st.rerun()
 
-
             # =========================
             # BRANCH OFFICES
             # =========================
@@ -389,9 +388,45 @@ else:
                 sub_df.assign(Remark=st.session_state.sub_remark)
             ], ignore_index=True)
 
+            # -----------------------------
+            # Infer From/To Dates from uploaded data
+            # -----------------------------
+            dates = pd.to_datetime(df['Date'], errors='coerce')
+            from_date = dates.min()
+            to_date = dates.max()
+
+            # From-To in separate rows
+            from_to_df = pd.DataFrame({
+                'Office Name': [
+                    f"From Date: {from_date.strftime('%d-%m-%Y')}",
+                    f"To Date: {to_date.strftime('%d-%m-%Y')}"
+                ],
+                'Division': [None, None],
+                'Days_Exceeding_Threshold': [None, None],
+                'Avg_Excess_Above_Threshold': [None, None],
+                'Office Type': [None, None],
+                'Remark': [None, None]
+            })
+
+            # Last Updated IST
+            ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            last_updated_df = pd.DataFrame({
+                'Office Name': [f"Last Updated (IST): {ist_time.strftime('%d-%m-%Y %H:%M:%S')}"],
+                'Division': [None],
+                'Days_Exceeding_Threshold': [None],
+                'Avg_Excess_Above_Threshold': [None],
+                'Office Type': [None],
+                'Remark': [None]
+            })
+
+            final_export = pd.concat(
+                [final_df, from_to_df, last_updated_df],
+                ignore_index=True
+            )
+
             output = BytesIO()
             with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                final_df.to_excel(writer, index=False, sheet_name="Updated")
+                final_export.to_excel(writer, index=False, sheet_name="Updated")
 
             st.download_button(
                 "📥 Download Updated Remarks",
@@ -399,5 +434,3 @@ else:
                 file_name="High_Risk_Updated.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
-
