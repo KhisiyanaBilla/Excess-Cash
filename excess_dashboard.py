@@ -21,7 +21,7 @@ if not st.session_state.authenticated:
     if st.button("Login"):
         if password_input == PASSWORD:
             st.session_state.authenticated = True
-            st.success("Access Granted! Press Login again to enter.")
+            st.success("Access Granted! Press Login button again to enter.")
 else:
     st.title("Excess Cash Monitoring – Jabalpur Region")
 
@@ -363,3 +363,4 @@ else:
                 file_name="High_Risk_Updated.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
