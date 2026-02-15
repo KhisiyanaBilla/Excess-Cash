@@ -259,10 +259,25 @@ else:
         )
 
         if uploaded_remit:
-            df = pd.read_excel(uploaded_remit)
+            df_full = pd.read_excel(uploaded_remit)
 
-            # Remove footer rows
-            df = df[~df['Office Name'].astype(str).str.startswith(("From Date", "To Date", "Last Updated"))]
+            # Extract From/To dates before removing footer rows
+            last_rows = df_full.tail(3)  # last 3 rows include From Date, To Date, Last Updated
+            from_row = last_rows.iloc[0]['Office Name']
+            to_row = last_rows.iloc[1]['Office Name']
+
+            try:
+                from_date = datetime.strptime(from_row.replace("From Date:", "").strip(), "%d-%m-%Y")
+            except:
+                from_date = None
+
+            try:
+                to_date = datetime.strptime(to_row.replace("To Date:", "").strip(), "%d-%m-%Y")
+            except:
+                to_date = None
+
+            # Remove footer rows for normal processing
+            df = df_full[~df_full['Office Name'].astype(str).str.startswith(("From Date", "To Date", "Last Updated"))]
             df = df.reset_index(drop=True)
 
             df['Days_Exceeding_Threshold'] = df['Days_Exceeding_Threshold'].fillna(0).astype(int)
@@ -376,22 +391,6 @@ else:
                 branch_df.assign(Remark=st.session_state.branch_remark),
                 sub_df.assign(Remark=st.session_state.sub_remark)
             ], ignore_index=True)
-
-            # -----------------------------
-            # Read From/To dates from uploaded file
-            # -----------------------------
-            from_date = None
-            to_date = None
-            for val in uploaded_remit:
-                for name in df['Office Name'].astype(str):
-                    if name.startswith("From Date:"):
-                        from_date = datetime.strptime(name.replace("From Date:", "").strip(), "%d-%m-%Y")
-                    elif name.startswith("To Date:"):
-                        to_date = datetime.strptime(name.replace("To Date:", "").strip(), "%d-%m-%Y")
-            if from_date is None:
-                from_date = datetime.utcnow() + timedelta(hours=5, minutes=30)
-            if to_date is None:
-                to_date = datetime.utcnow() + timedelta(hours=5, minutes=30)
 
             from_to_df = pd.DataFrame({
                 'Office Name': [
