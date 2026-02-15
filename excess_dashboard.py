@@ -21,21 +21,39 @@ if not st.session_state.authenticated:
     if st.button("Login"):
         if password_input == PASSWORD:
             st.session_state.authenticated = True
-            st.success("Access Granted! Press Login button again to enter.")
+            st.success("Access Granted! Press Login again to enter.")
 else:
     st.title("Excess Cash Monitoring – Jabalpur Region")
 
     # -----------------------------
-    # Tabs
+    # Tabs (VISUAL CHANGE ONLY)
     # -----------------------------
     tab1, tab2 = st.tabs(
-        ["Very High Risk Offices", "Remittance Monitoring"]
+        ["🚨 VERY HIGH RISK OFFICES", "💸 REMITTANCE MONITORING"]
     )
 
     # ================================
     # TAB 1: Very High Risk Offices
     # ================================
     with tab1:
+
+        # 🔴 TAB 1 HEADER BANNER (NEW – VISUAL ONLY)
+        st.markdown("""
+        <div style="
+            background-color:#7a1025;
+            padding:14px 18px;
+            border-radius:10px;
+            margin-bottom:14px;
+        ">
+        <h2 style="color:white; margin:0;">
+        🚨 VERY HIGH RISK OFFICES
+        </h2>
+        <p style="color:#f5b73b; margin:4px 0 0 0; font-size:0.9em;">
+        Persistent excess cash beyond permissible limits
+        </p>
+        </div>
+        """, unsafe_allow_html=True)
+
         uploaded_file = st.file_uploader(
             "Select Excel File for High Risk Analysis",
             type=["xlsx"],
@@ -133,12 +151,8 @@ else:
                             use_container_width=True
                         )
 
-                # -------- EXPORT DATA PREPARATION (NO BUTTON HERE) --------
                 if risk_tables:
-                    combined_df = pd.concat(
-                        risk_tables.values(),
-                        ignore_index=True
-                    )
+                    combined_df = pd.concat(risk_tables.values(), ignore_index=True)
                     combined_df['Remark'] = "Pending"
 
                     from_to_df = pd.DataFrame({
@@ -167,9 +181,7 @@ else:
                     output_tab1 = BytesIO()
                     with pd.ExcelWriter(output_tab1, engine='xlsxwriter') as writer:
                         combined_export.to_excel(
-                            writer,
-                            index=False,
-                            sheet_name="High_Risk_Offices"
+                            writer, index=False, sheet_name="High_Risk_Offices"
                         )
 
                     file_name_tab1 = (
@@ -178,7 +190,6 @@ else:
                         f"{to_date.strftime('%d%m%Y')}.xlsx"
                     )
 
-                # -------- CHARTS --------
                 for heading, table in risk_tables.items():
                     if not table.empty:
                         table['Office_Label'] = (
@@ -197,7 +208,6 @@ else:
                         fig.update_layout(xaxis_tickangle=-45)
                         st.plotly_chart(fig, use_container_width=True)
 
-                # -------- DOWNLOAD BUTTON AT VERY BOTTOM --------
                 if risk_tables:
                     st.markdown("---")
                     st.download_button(
@@ -206,6 +216,32 @@ else:
                         file_name=file_name_tab1,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
+
+    # ================================
+    # TAB 2: Remittance Monitoring
+    # ================================
+    with tab2:
+
+        # 🟢 TAB 2 HEADER BANNER (NEW – VISUAL ONLY)
+        st.markdown("""
+        <div style="
+            background-color:#14532d;
+            padding:14px 18px;
+            border-radius:10px;
+            margin-bottom:14px;
+        ">
+        <h2 style="color:white; margin:0;">
+        💸 REMITTANCE MONITORING
+        </h2>
+        <p style="color:#b7f0c2; margin:4px 0 0 0; font-size:0.9em;">
+        Office-wise follow-up and remittance status update
+        </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # (REST OF TAB 2 CODE REMAINS 100% UNCHANGED)
+        # — exactly as you already have it —
+
 
 # ================================
 # TAB 2: Remittance Monitoring
@@ -363,4 +399,5 @@ else:
                 file_name="High_Risk_Updated.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
 
