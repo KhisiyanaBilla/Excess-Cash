@@ -27,7 +27,7 @@ else:
     st.title("Excess Cash Monitoring – Jabalpur Region")
 
     # -----------------------------
-    # Tabs (VISUAL CHANGE ONLY)
+    # Tabs
     # -----------------------------
     tab1, tab2 = st.tabs(
         ["🚨 VERY HIGH RISK OFFICES", "💸 REMITTANCE MONITORING"]
@@ -38,7 +38,6 @@ else:
     # ================================
     with tab1:
 
-        # 🔴 TAB 1 HEADER BANNER (NEW – VISUAL ONLY)
         st.markdown("""
         <div style="
             background-color:#7a1025;
@@ -156,9 +155,7 @@ else:
                     combined_df = pd.concat(risk_tables.values(), ignore_index=True)
                     combined_df['Remark'] = "Pending"
 
-                    # -----------------------------
-                    # From-To Rows (Separate)
-                    # -----------------------------
+                    # From-To rows
                     from_to_df = pd.DataFrame({
                         'Office Name': [
                             f"From Date: {from_date.strftime('%d-%m-%Y')}",
@@ -171,9 +168,7 @@ else:
                         'Remark': [None, None]
                     })
 
-                    # -----------------------------
                     # Last Updated IST
-                    # -----------------------------
                     ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
                     last_updated_df = pd.DataFrame({
                         'Office Name': [f"Last Updated (IST): {ist_time.strftime('%d-%m-%Y %H:%M:%S')}"],
@@ -233,7 +228,6 @@ else:
     # ================================
     with tab2:
 
-        # 🟢 TAB 2 HEADER BANNER (NEW – VISUAL ONLY)
         st.markdown("""
         <div style="
             background-color:#14532d;
@@ -248,7 +242,7 @@ else:
         Office-wise follow-up and remittance status update
         </p>
         </div>
-        """, unsafe_allow_html=True)
+        """ , unsafe_allow_html=True)
 
         st.subheader("Remittance Monitoring for High Risk Offices")
 
@@ -353,7 +347,6 @@ else:
                         key=f"{remark_key}_{i}"
                     )
 
-                    # 🔹 CLEAR VISUAL SEPARATOR (NEW)
                     st.markdown(
                         """
                         <hr style='border: 1.5px solid #444444; margin: 10px 0 4px 0;'>
@@ -367,41 +360,36 @@ else:
                         st.session_state.play_sound = True
                         st.rerun()
 
-            # =========================
-            # BRANCH OFFICES
-            # =========================
             render_status_table(branch_df, "branch_remark", "Branch Offices – Current Status")
             render_cards(branch_df, "branch_remark", "Update Remarks – Branch Offices")
-
             st.markdown("---")
-
-            # =========================
-            # SUB OFFICES
-            # =========================
             render_status_table(sub_df, "sub_remark", "Sub Offices – Current Status")
             render_cards(sub_df, "sub_remark", "Update Remarks – Sub Offices")
 
-            # =========================
+            # ------------------------
             # EXPORT UPDATED FILE
-            # =========================
+            # ------------------------
             final_df = pd.concat([
                 branch_df.assign(Remark=st.session_state.branch_remark),
                 sub_df.assign(Remark=st.session_state.sub_remark)
             ], ignore_index=True)
 
             # -----------------------------
-            # Infer From/To Dates from uploaded file content
+            # Read From/To dates from uploaded file
             # -----------------------------
-            date_matches = df['Office Name'].astype(str).apply(
-                lambda x: re.findall(r'\d{2}-\d{2}-\d{4}', x)
-            )
-            all_dates = [datetime.strptime(d, "%d-%m-%Y") for sublist in date_matches for d in sublist]
-
-            if all_dates:
-                from_date = min(all_dates)
-                to_date = max(all_dates)
-            else:
-                from_date = to_date = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            from_date = None
+            to_date = None
+            for val in uploaded_remit:
+                # Already read into df, check Office Name column
+                for name in df['Office Name'].astype(str):
+                    if name.startswith("From Date:"):
+                        from_date = datetime.strptime(name.replace("From Date:", "").strip(), "%d-%m-%Y")
+                    elif name.startswith("To Date:"):
+                        to_date = datetime.strptime(name.replace("To Date:", "").strip(), "%d-%m-%Y")
+            if from_date is None:
+                from_date = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            if to_date is None:
+                to_date = datetime.utcnow() + timedelta(hours=5, minutes=30)
 
             from_to_df = pd.DataFrame({
                 'Office Name': [
