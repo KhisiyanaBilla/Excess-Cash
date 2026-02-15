@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 from io import BytesIO
 from datetime import datetime, timedelta
+import re
 
 # -----------------------------
 # Page Setup
@@ -389,13 +390,19 @@ else:
             ], ignore_index=True)
 
             # -----------------------------
-            # Infer From/To Dates from uploaded data
+            # Infer From/To Dates from uploaded file content
             # -----------------------------
-            dates = pd.to_datetime(df['Date'], errors='coerce')
-            from_date = dates.min()
-            to_date = dates.max()
+            date_matches = df['Office Name'].astype(str).apply(
+                lambda x: re.findall(r'\d{2}-\d{2}-\d{4}', x)
+            )
+            all_dates = [datetime.strptime(d, "%d-%m-%Y") for sublist in date_matches for d in sublist]
 
-            # From-To in separate rows
+            if all_dates:
+                from_date = min(all_dates)
+                to_date = max(all_dates)
+            else:
+                from_date = to_date = datetime.utcnow() + timedelta(hours=5, minutes=30)
+
             from_to_df = pd.DataFrame({
                 'Office Name': [
                     f"From Date: {from_date.strftime('%d-%m-%Y')}",
@@ -408,7 +415,6 @@ else:
                 'Remark': [None, None]
             })
 
-            # Last Updated IST
             ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
             last_updated_df = pd.DataFrame({
                 'Office Name': [f"Last Updated (IST): {ist_time.strftime('%d-%m-%Y %H:%M:%S')}"],
