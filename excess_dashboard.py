@@ -212,154 +212,154 @@ else:
 # ================================
 # TAB 2: Remittance Monitoring
 # ================================
-with tab2:
-    st.subheader("Remittance Monitoring for High Risk Offices")
+    with tab2:
+        st.subheader("Remittance Monitoring for High Risk Offices")
 
-    if "play_sound" not in st.session_state:
-        st.session_state.play_sound = False
-
-    uploaded_remit = st.file_uploader(
-        "Upload Excel exported from Tab 1",
-        type=["xlsx"],
-        key="tab2_upload"
-    )
-
-    if uploaded_remit:
-        df = pd.read_excel(uploaded_remit)
-
-        # Remove footer rows
-        df = df[~df['Office Name'].astype(str).str.startswith(("From Date", "Last Updated"))]
-        df = df.reset_index(drop=True)
-
-        df['Days_Exceeding_Threshold'] = df['Days_Exceeding_Threshold'].fillna(0).astype(int)
-        df['Remark'] = df.get('Remark', 'Pending')
-
-        branch_df = df[df['Office Type'] == 'BPO'].reset_index(drop=True)
-        sub_df = df[df['Office Type'] == 'SPO'].reset_index(drop=True)
-
-        remark_options = [
-            "Pending",
-            "Cash Remitted",
-            "Balance lowered but cash not remitted"
-        ]
-
-        remark_colors = {
-            "Pending": "#6b1f2b",
-            "Cash Remitted": "#1f6b3b",
-            "Balance lowered but cash not remitted": "#6b5a1f"
-        }
-
-        if "branch_remark" not in st.session_state:
-            st.session_state.branch_remark = branch_df['Remark'].tolist()
-
-        if "sub_remark" not in st.session_state:
-            st.session_state.sub_remark = sub_df['Remark'].tolist()
-
-        # ------------------------
-        # SOUND
-        # ------------------------
-        if st.session_state.play_sound:
-            st.components.v1.html("""
-            <script>
-            const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-            audio.play();
-            </script>
-            """, height=0)
+        if "play_sound" not in st.session_state:
             st.session_state.play_sound = False
 
-        # ------------------------
-        # STATUS TABLE
-        # ------------------------
-        def render_status_table(df, remark_key, title):
-            st.markdown(f"### {title}")
-            show = df.copy()
-            show['Remark'] = st.session_state[remark_key]
-
-            def color_rows(row):
-                bg = remark_colors.get(row['Remark'], "#2b2b2b")
-                return [f"background-color: {bg}; color: white"] * len(row)
-
-            st.dataframe(show.style.apply(color_rows, axis=1), use_container_width=True)
-
-        # ------------------------
-        # OPTION 2 — COLUMN-ALIGNED CARDS
-        # ------------------------
-        def render_cards(df, remark_key, title):
-            st.markdown(f"### {title}")
-
-            for i in range(len(df)):
-                remark = st.session_state[remark_key][i]
-                bg = remark_colors.get(remark, "#2b2b2b")
-
-                st.markdown(
-                    f"""
-                    <div style="
-                        border: 2px solid {bg};
-                        border-radius: 10px;
-                        padding: 15px;
-                        margin-bottom: 6px;
-                        background-color: rgba(255,255,255,0.02);
-                    ">
-                        <b>{df.loc[i, 'Office Name']}</b><br>
-                        <span style="color: #cccccc; font-size: 0.85em;">
-                            {df.loc[i, 'Division']}
-                        </span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-                new_val = st.selectbox(
-                    "Update Remark",
-                    remark_options,
-                    index=remark_options.index(remark),
-                    key=f"{remark_key}_{i}"
-                )
-
-                # 🔹 CLEAR VISUAL SEPARATOR (NEW)
-                st.markdown(
-                    """
-                    <hr style='border: 1.5px solid #444444; margin: 10px 0 4px 0;'>
-                    <hr style='border: 1.5px solid #444444; margin: 0 0 14px 0;'>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-                if new_val != remark:
-                    st.session_state[remark_key][i] = new_val
-                    st.session_state.play_sound = True
-                    st.rerun()
-
-
-        # =========================
-        # BRANCH OFFICES
-        # =========================
-        render_status_table(branch_df, "branch_remark", "Branch Offices – Current Status")
-        render_cards(branch_df, "branch_remark", "Update Remarks – Branch Offices")
-
-        st.markdown("---")
-
-        # =========================
-        # SUB OFFICES
-        # =========================
-        render_status_table(sub_df, "sub_remark", "Sub Offices – Current Status")
-        render_cards(sub_df, "sub_remark", "Update Remarks – Sub Offices")
-
-        # =========================
-        # EXPORT UPDATED FILE
-        # =========================
-        final_df = pd.concat([
-            branch_df.assign(Remark=st.session_state.branch_remark),
-            sub_df.assign(Remark=st.session_state.sub_remark)
-        ], ignore_index=True)
-
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-            final_df.to_excel(writer, index=False, sheet_name="Updated")
-
-        st.download_button(
-            "📥 Download Updated Remarks",
-            data=output.getvalue(),
-            file_name="High_Risk_Updated.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        uploaded_remit = st.file_uploader(
+            "Upload Excel exported from Tab 1",
+            type=["xlsx"],
+            key="tab2_upload"
         )
+
+        if uploaded_remit:
+            df = pd.read_excel(uploaded_remit)
+
+            # Remove footer rows
+            df = df[~df['Office Name'].astype(str).str.startswith(("From Date", "Last Updated"))]
+            df = df.reset_index(drop=True)
+
+            df['Days_Exceeding_Threshold'] = df['Days_Exceeding_Threshold'].fillna(0).astype(int)
+            df['Remark'] = df.get('Remark', 'Pending')
+
+            branch_df = df[df['Office Type'] == 'BPO'].reset_index(drop=True)
+            sub_df = df[df['Office Type'] == 'SPO'].reset_index(drop=True)
+
+            remark_options = [
+                "Pending",
+                "Cash Remitted",
+                "Balance lowered but cash not remitted"
+            ]
+
+            remark_colors = {
+                "Pending": "#6b1f2b",
+                "Cash Remitted": "#1f6b3b",
+                "Balance lowered but cash not remitted": "#6b5a1f"
+            }
+
+            if "branch_remark" not in st.session_state:
+                st.session_state.branch_remark = branch_df['Remark'].tolist()
+
+            if "sub_remark" not in st.session_state:
+                st.session_state.sub_remark = sub_df['Remark'].tolist()
+
+            # ------------------------
+            # SOUND
+            # ------------------------
+            if st.session_state.play_sound:
+                st.components.v1.html("""
+                <script>
+                const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+                audio.play();
+                </script>
+                """, height=0)
+                st.session_state.play_sound = False
+
+            # ------------------------
+            # STATUS TABLE
+            # ------------------------
+            def render_status_table(df, remark_key, title):
+                st.markdown(f"### {title}")
+                show = df.copy()
+                show['Remark'] = st.session_state[remark_key]
+
+                def color_rows(row):
+                    bg = remark_colors.get(row['Remark'], "#2b2b2b")
+                    return [f"background-color: {bg}; color: white"] * len(row)
+
+                st.dataframe(show.style.apply(color_rows, axis=1), use_container_width=True)
+
+            # ------------------------
+            # OPTION 2 — COLUMN-ALIGNED CARDS
+            # ------------------------
+            def render_cards(df, remark_key, title):
+                st.markdown(f"### {title}")
+
+                for i in range(len(df)):
+                    remark = st.session_state[remark_key][i]
+                    bg = remark_colors.get(remark, "#2b2b2b")
+
+                    st.markdown(
+                        f"""
+                        <div style="
+                            border: 2px solid {bg};
+                            border-radius: 10px;
+                            padding: 15px;
+                            margin-bottom: 6px;
+                            background-color: rgba(255,255,255,0.02);
+                        ">
+                            <b>{df.loc[i, 'Office Name']}</b><br>
+                            <span style="color: #cccccc; font-size: 0.85em;">
+                                {df.loc[i, 'Division']}
+                            </span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                    new_val = st.selectbox(
+                        "Update Remark",
+                        remark_options,
+                        index=remark_options.index(remark),
+                        key=f"{remark_key}_{i}"
+                    )
+
+                    # 🔹 CLEAR VISUAL SEPARATOR (NEW)
+                    st.markdown(
+                        """
+                        <hr style='border: 1.5px solid #444444; margin: 10px 0 4px 0;'>
+                        <hr style='border: 1.5px solid #444444; margin: 0 0 14px 0;'>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                    if new_val != remark:
+                        st.session_state[remark_key][i] = new_val
+                        st.session_state.play_sound = True
+                        st.rerun()
+
+
+            # =========================
+            # BRANCH OFFICES
+            # =========================
+            render_status_table(branch_df, "branch_remark", "Branch Offices – Current Status")
+            render_cards(branch_df, "branch_remark", "Update Remarks – Branch Offices")
+
+            st.markdown("---")
+
+            # =========================
+            # SUB OFFICES
+            # =========================
+            render_status_table(sub_df, "sub_remark", "Sub Offices – Current Status")
+            render_cards(sub_df, "sub_remark", "Update Remarks – Sub Offices")
+
+            # =========================
+            # EXPORT UPDATED FILE
+            # =========================
+            final_df = pd.concat([
+                branch_df.assign(Remark=st.session_state.branch_remark),
+                sub_df.assign(Remark=st.session_state.sub_remark)
+            ], ignore_index=True)
+
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                final_df.to_excel(writer, index=False, sheet_name="Updated")
+
+            st.download_button(
+                "📥 Download Updated Remarks",
+                data=output.getvalue(),
+                file_name="High_Risk_Updated.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
